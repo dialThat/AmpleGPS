@@ -21,3 +21,5 @@ The values are:
         GPS_VIEW_UNPARSED = (1 << 6),
  
 Besides GPS_PAUSED, which by nature does nothing, all values may be delivered. GPS_DO_NOT_PARSE if chosen, handles a valid yet unparsed NMEA-sentence without the checksum. GPS_RESERVED will be used for additional informations.
+
+Another pattern is the use of standard C library function like strtod() instead of handcrafted parsing tools, and the preferred use of pointers to values instead of indexed values.
