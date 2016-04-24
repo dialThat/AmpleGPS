@@ -2,7 +2,7 @@
 //  AmpleGPS.h
 //  
 //
-//  Created by n/a on 4/16/16.
+//  Created by dial on 4/16/16.
 //
 //
 
@@ -12,21 +12,23 @@
 #endif /* AmpleGPS_h */
 
 
-#define GPRMC_NMEA "$GPRMC"
-#define GPVTG_NMEA "$GPVTG"
-#define GPGGA_NMEA "$GPGGA"
-#define GPGSA_NMEA "$GPGSA"
-#define GPGSV_NMEA "$GPGSV"
-#define GPGLL_NMEA "$GPGLL"
+#define GPRMC_NMEA "RMC"
+#define GPVTG_NMEA "VTG"
+#define GPGGA_NMEA "GGA"
+#define GPGSA_NMEA "GSA"
+#define GPGSV_NMEA "GSV"
+#define GPGLL_NMEA "GLL"
 
 
 #include "Arduino.h"
     
-#define MAXLINELENGTH 88 // max length for NMEA sentences to parse? 82 + '$'+ checksum (*00) +'\0' [=87]
-#define MAXSATELLITES 24 // supposed to be 16, but some are carried on while not in sight
+#define MAXLINELENGTH 87 // max length for NMEA sentences to parse? 82 + '$'+ checksum (*00) +'\0' [=87]
+#define MAXSATELLITES 16 // supposed to be 16, but some are carried on while not in sight
     
-    
-    
+const float half_piRad PROGMEM = 0.017453293;//  = π/180
+const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Earth
+
+
     typedef enum {//GPS_Mode
         GPS_PAUSED = 0,
         GPS_DO_NOT_PARSE = (1 << 0),
@@ -51,12 +53,13 @@
     class AmpleGPS {
     public:
         
-        char *readBuffer;//[MAXLINELENGTH + 1];//volatile
+        char readBuffer[MAXLINELENGTH];//82+3(checksum, '*XX'+'$'+'/0'
         uint8_t bufferIndex=0;//volatile
+//        const char *nmeaPrefix = "$GP";// keep in mind that 'GP" may be changed
         
 //        char nmeaSentence[MAXLINELENGTH + 1];
-        char *nmeaSentence;//[MAXLINELENGTH + 1];
-        char *checksumString;//volatile
+        char nmeaSentence[81];//82 -'GP' +'/0';
+        char *checksumString;
         uint16_t nmeaCheckSum;
         
         uint8_t hour, minute, seconds, year, month, day;
@@ -69,14 +72,13 @@
         uint8_t mode;
         callBackFunction callBack;
         
-        float latitudeDegrees, longitudeDegrees;
-        float geoidheight, altitude;
-        float speedOnGround, bearing, magvariation, HDOP;
+        float latitudeDegrees, longitudeDegrees, altitude;
+        float speedOnGround, bearing, HDOP;
         boolean fix;
         uint8_t fixquality, satellitesCount;
         
         //        gsv_satellite satellites[MAXSATELLITES];//inserted for GPGSV @dial
-        GSV_Satellite *satellitesBuffer;
+        GSV_Satellite satellitesBuffer[MAXSATELLITES];
         boolean gsv_isDirty;
         
         char *unparsedSentence;
@@ -84,7 +86,8 @@
         char readSentence(char c);
         boolean parseSentence(char *nmeaSentence);
         void begin();
-        
+        float getDistanceInKm( float targetLat, float targetLon);
+
     private:
         char *parseSingleSatellite(char *p, gsv_satellite *aSatellite);
         char *parseSingleCoord (char *p, float *degreeValue);
