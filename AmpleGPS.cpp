@@ -12,7 +12,7 @@
 
 void AmpleGPS::begin(){
 
-    atitudeDegrees = longitudeDegrees = altitude = //geoidheight
+    latitudeDegrees = longitudeDegrees = altitude = //geoidheight
     speedOnGround = bearing = HDOP =0.0;
     
     hour = minute = seconds = year = month = day =
@@ -23,7 +23,8 @@ void AmpleGPS::begin(){
 
     bufferIndex = 0;
     
-    unparsedSentence = callBack = NULL;
+    unparsedSentence = NULL;
+    callBack = NULL;
 
     mode = GPS_COMPLETE_DATA;       //default mode
 
@@ -116,6 +117,14 @@ boolean AmpleGPS::parseSentence(char *nmeaSentence) {
         altitude = strtod (p+1, &p);
         
 //        skip the rest
+//        p = strchr(p, ',')+1;
+//        p = strchr(p, ',')+1;
+//        if (',' != *p)
+//        {// when will we ever use it
+//            geoidheight = strtod (p, &p);
+////            Serial.print("$geoidheight: "); Serial.println(geoidheight);
+//            
+//        }
         
         return true;
     }
@@ -213,10 +222,28 @@ char AmpleGPS::readSentence(char c) {
                 
 //                            Serial.println("valid checksum");
             }
+//            else {
+//                Serial.print(F("--: "));
+//                Serial.print(checkSum);
+//                Serial.print(F(", "));
+//                Serial.println(nmeaCheckSum);
+//                Serial.print(F(", "));
+//                Serial.print(checksumString);
+//
+//                Serial.println((const char *)readBuffer);
+//                
+//            }
             checksumString = NULL;
 
         }
-
+//        else
+//        {
+//            Serial.println(F("no valid nmeaPrefix"));
+//            Serial.print(nmeaPrefix);
+//            Serial.println(nmeaSentence);
+//
+//
+//        }
         if(GPS_DO_NOT_PARSE & mode)
             performCallBack(GPS_DO_NOT_PARSE);
         else
@@ -300,10 +327,21 @@ char *AmpleGPS::parsePairOfCoords (char *p){
     
     if(p)
         p = parseSingleCoord(p,&longitudeDegrees);
+    //    if(p)     // debug
+    //    {
+    //        Serial.print("lat: ");
+    //        Serial.print(latitudeDegrees,6);
+    //        Serial.print("; lon: ");
+    //        Serial.println(longitudeDegrees,6);
+    //    }
+    //    else
+    //        Serial.println("something wrong");
+    
     
     performCallBack(GPS_NEW_COORDS);
     return p;
 }
+
 
 
 char *AmpleGPS::parseSingleCoord(char *p, float *degreeValue){
@@ -374,4 +412,34 @@ float AmpleGPS::getDistanceInKm( float targetLat, float targetLon)
 // --------------------------------
 
 }
+
+
+
+
+
+
+
+/*
+ GPS_PAUSED = 0,
+ GPS_DO_NOT_PARSE = (1 << 0),
+ GPS_NEW_COORDS = (1 << 1),
+ GPS_NEW_TIME = (1 << 2),
+ GPS_UPDATE_SATS = (1 << 3),
+ GPS_RESERVED = (1 << 4),
+ GPS_COMPLETE_DATA = (1 << 5),
+ GPS_VIEW_UNPARSED = (1 << 6),
+*/
+
+
+/*
+ $GPVTG,,T,,M,0.052,N,0.097,K,A*2A
+ +$GPGGA,061919.00,5040.58619,66359,E,1,07,1.93,68.3,M,46.8,M,,*62
+ $GPGSA,A,3,16,30,23,03,07,09,06,,,,,,2.80,1.93,2.03*0C
+ -$GPGSV,3,1,11,02,41,290,,03,11,119,34,05,12,297,,06,47,221,32*75
+ -$GPGSV,3,2,11,07,46,168,30,09,77,061,30,16,16,062,27,23,44,069,40*77
+ $GPGSV,3,3,11,26,11,034,,29,06,341,,30,20,187,30*4D
+ $GPGLL,5040.58619,N,00709.66359,E,061919.00,A,A*6C
+ +$GPRMC,061920.00,A,5040.58639,N,00709.66356,E,0.876,247.96,130416,,,A*6A
+ 
+ */
 

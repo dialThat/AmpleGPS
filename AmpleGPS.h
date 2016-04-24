@@ -22,14 +22,14 @@
 
 #include "Arduino.h"
     
-#define MAXLINELENGTH 87 // max length for NMEA sentences to parse? 82 + '$'+ checksum (*00) +'\0' [=87]
+#define MAXLINELENGTH 87 // max length for NMEA sentences to parse: 82 + '$'+ checksum (*00) +'\0' [=87]
 #define MAXSATELLITES 16 // supposed to be 16, but some are carried on while not in sight
     
 const float half_piRad PROGMEM = 0.017453293;//  = π/180
 const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Earth
 
 
-    typedef enum {//GPS_Mode
+    enum {//GPS_Mode
         GPS_PAUSED = 0,
         GPS_DO_NOT_PARSE = (1 << 0),
         GPS_NEW_COORDS = (1 << 1),
@@ -52,6 +52,7 @@ const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Eart
     
     class AmpleGPS {
     public:
+        uint16_t milliseconds;
         
         char readBuffer[MAXLINELENGTH];//82+3(checksum, '*XX'+'$'+'/0'
         uint8_t bufferIndex=0;//volatile
@@ -63,12 +64,8 @@ const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Eart
         uint16_t nmeaCheckSum;
         
         uint8_t hour, minute, seconds, year, month, day;
-        uint16_t milliseconds;
         
-        // Fixed point latitude and longitude value with degrees stored in units of 1/100000 degrees,
-        // and minutes stored in units of 1/100000 degrees.  See pull #13 for more details:
-        //   https://github.com/adafruit/Adafruit-GPS-Library/pull/13
-        
+
         uint8_t mode;
         callBackFunction callBack;
         
