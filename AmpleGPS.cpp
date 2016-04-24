@@ -2,7 +2,7 @@
 //  AmpleGPS.cpp
 //  
 //
-//  Created by n/a on 4/16/16.
+//  Created by dial on 4/16/16.
 //
 //
 
@@ -11,10 +11,9 @@
 
 
 void AmpleGPS::begin(){
-    callBack = NULL;
-     latitudeDegrees = longitudeDegrees =
-     geoidheight = altitude =
-    speedOnGround = bearing = magvariation = HDOP =0.0;
+
+    atitudeDegrees = longitudeDegrees = altitude = //geoidheight
+    speedOnGround = bearing = HDOP =0.0;
     
     hour = minute = seconds = year = month = day =
     fixquality = satellitesCount = 0; // uint8_t
@@ -22,34 +21,22 @@ void AmpleGPS::begin(){
     fix = false; // boolean
     milliseconds = 0; // uint16_t
 
-    
-    readBuffer = (char *)malloc(MAXLINELENGTH + 1);
     bufferIndex = 0;
     
-    //  nmeaSentence[MAXLINELENGTH + 1];
-    nmeaSentence = (char *)malloc(MAXLINELENGTH + 1);
+    unparsedSentence = callBack = NULL;
 
-    satellitesBuffer = (GSV_Satellite *)calloc(MAXSATELLITES, sizeof(GSV_Satellite));
-    
-    Serial.println(sizeof(GSV_Satellite));
-    Serial.println(sizeof(GSV_Satellite *));
-
-    Serial.println((MAXSATELLITES * sizeof(GSV_Satellite)));
-    Serial.println((unsigned long) satellitesBuffer);
-
-    unparsedSentence = NULL;
-    callBack = NULL;
-    mode = GPS_COMPLETE_DATA;
+    mode = GPS_COMPLETE_DATA;       //default mode
 
 }
 
 boolean AmpleGPS::parseSentence(char *nmeaSentence) {
     // do checksum check
     
-    char *p = nmeaSentence;
+     char *p = nmeaSentence;
+//    Serial.print("\n   ");
 //    Serial.println(nmeaSentence);
     
-    if (strstr(nmeaSentence, "$GPGSV")) {
+    if (strstr_P(nmeaSentence, PSTR(GPGSV_NMEA))) {
 //        Serial.println("$GPGSV: ");
 
         unsigned int totalMessageNumber = 0;
@@ -61,7 +48,7 @@ boolean AmpleGPS::parseSentence(char *nmeaSentence) {
         //
         
         
-        p += 6;
+        p += 3;
         //        Serial.print(*p);
         
         totalMessageNumber = strtol(p+1,&p,10);
@@ -106,13 +93,13 @@ boolean AmpleGPS::parseSentence(char *nmeaSentence) {
         }
         return true;
     }
-    
+
     // look for a few common sentences
-    else if (strstr(nmeaSentence, "$GPGGA")) {
+    else if (strstr_P(nmeaSentence, PSTR(GPGGA_NMEA))) {// gga is broken on certain uBlox devices,
         
         //        Serial.println("$GPGGA");
         // get time
-        p += 6;
+        p += 3;
         p=parseTime(p);
         
         p = parsePairOfCoords(p);
@@ -124,25 +111,26 @@ boolean AmpleGPS::parseSentence(char *nmeaSentence) {
         
         satellitesCount = strtol(p+1,&p,10);
         
-        HDOP = strtod(p+1, &p);
+        HDOP = strtod(p+1, &p);// not needed, only to parse
         
         altitude = strtod (p+1, &p);
         
-        p = strchr(p, ',')+1;
-        p = strchr(p, ',')+1;
-        if (',' != *p)
-        {// when will we ever use it
-            geoidheight = strtod (p, &p);
-//            Serial.print("$geoidheight: "); Serial.println(geoidheight);
-            
-        }
+//        skip the rest
+//        p = strchr(p, ',')+1;
+//        p = strchr(p, ',')+1;
+//        if (',' != *p)
+//        {// when will we ever use it
+//            geoidheight = strtod (p, &p);
+////            Serial.print("$geoidheight: "); Serial.println(geoidheight);
+//            
+//        }
         
         return true;
     }
     
-    else if (strstr(nmeaSentence, "$GPRMC")) {
+    else if (strstr_P(nmeaSentence, PSTR(GPRMC_NMEA))) {
 //                Serial.println("$GPRMC");
-        p += 6;
+        p += 3;
         p=parseTime(p);
         
         p++;
@@ -181,11 +169,11 @@ boolean AmpleGPS::parseSentence(char *nmeaSentence) {
         return true;
     }
     
-    else if (strstr(nmeaSentence, "$GPGLL")) {
+    else if (strstr_P(nmeaSentence, PSTR(GPGLL_NMEA))) {
         
         //        Serial.println("$GPGLL");
         // get coords
-        p += 6;
+        p += 3;
         p = parsePairOfCoords(p);
         
         if(NULL == p)
@@ -214,39 +202,57 @@ char AmpleGPS::readSentence(char c) {
     if (mode & GPS_PAUSED) return c;
     
     if (c == '\n') {        // sentence is at end
-        strcpy(nmeaSentence, (const char *)readBuffer);     // copy the string; double buffer
-        
-        uint32_t diff = (uint32_t)((char *)(checksumString - readBuffer));
-        char *nmeaCheckString = nmeaSentence + diff; // real pointer to '*' in the copy
-        
-        uint16_t checkSum = strtol((nmeaCheckString+1),NULL,16); // read the checksum from the string
-        if(checkSum == nmeaCheckSum)                        // do check
+        if (strstr_P(readBuffer, PSTR("$GP")))
         {
-            *nmeaCheckString = '\0';                             // end the nmea where checksumString did start
+//            Serial.println("valid nmeaPrefix");
+
+            uint32_t diff = (uint32_t)((char *)(checksumString - readBuffer));
+            char *nmeaCheckString = readBuffer + diff; // real pointer to '*' in the copy
+            
+            uint16_t checkSum = strtol((nmeaCheckString+1),NULL,16); // read the checksum from the string
+            if(checkSum == nmeaCheckSum)                        // do check
+            {
+                uint8_t length = strlen(readBuffer) - strlen(nmeaCheckString) - 3;// 3 is the prefix
+
+                strncpy(nmeaSentence, (const char *)(readBuffer+3), length);     // copy the string; double buffer
+                *(nmeaSentence + length) = '\0';
+                
+                unparsedSentence = nmeaSentence;                    // valid, but not parsed yet.
+                
+//                            Serial.println("valid checksum");
+            }
+//            else {
+//                Serial.print(F("--: "));
+//                Serial.print(checkSum);
+//                Serial.print(F(", "));
+//                Serial.println(nmeaCheckSum);
+//                Serial.print(F(", "));
+//                Serial.print(checksumString);
+//
+//                Serial.println((const char *)readBuffer);
+//                
+//            }
             checksumString = NULL;
 
-            unparsedSentence = nmeaSentence;                    // valid, but not parsed yet.
-            
-            //            Serial.println("valid checksum");
         }
-        else {
-            Serial.print("--: ");
-            Serial.print(checkSum);
-            Serial.print(", ");
-            Serial.println(nmeaCheckSum);
-            Serial.println((const char *)readBuffer);
-            
-        }
-        
+//        else
+//        {
+//            Serial.println(F("no valid nmeaPrefix"));
+//            Serial.print(nmeaPrefix);
+//            Serial.println(nmeaSentence);
+//
+//
+//        }
         if(GPS_DO_NOT_PARSE & mode)
             performCallBack(GPS_DO_NOT_PARSE);
         else
-        {    //            Serial.println("will parse");
+        {   //             Serial.println("will parse");
             
             if(true == parseSentence(nmeaSentence))
             {
                 unparsedSentence = NULL;
-//                                Serial.println("did parse");
+                
+//                Serial.println("did parse");
                 
             }
             else
@@ -254,6 +260,7 @@ char AmpleGPS::readSentence(char c) {
                 if(*nmeaSentence == '$')
                 {
                     performCallBack(GPS_VIEW_UNPARSED);
+                    unparsedSentence = NULL;
                 }
             }
         }
@@ -284,8 +291,6 @@ char AmpleGPS::readSentence(char c) {
     bufferIndex++;
     return c;
 }
-
-
 
 
 char *AmpleGPS::parseTime(char *p)
@@ -380,6 +385,38 @@ int AmpleGPS::performCallBack(uint8_t suggestedMode)
             retVal =callBack(suggestedMode);
     return retVal;
 }
+
+
+float AmpleGPS::getDistanceInKm( float targetLat, float targetLon)
+{
+    //----------------------------------------
+    
+    //convert decimal degree into radian
+    float latRad = latitudeDegrees * half_piRad;
+    float lonRad = longitudeDegrees * half_piRad;
+    float tlatRad = targetLat * half_piRad;
+    float tlonRad = targetLon * half_piRad;
+    
+    //Calculate the distance in KM
+    float latSin = sin((latRad - tlatRad)*0.5);
+    float lonSin = sin((lonRad - tlonRad)*0.5);
+    float distance = doubleEarth * asin(sqrt((latSin*latSin) + cos(latRad) * cos(tlatRad) * (lonSin * lonSin)));
+    
+    return distance;
+    
+    //convert to miles
+//    distance.miles = distance.km * 0.621371192;
+//    distance.feet = distance.miles *5280;
+//
+// --------------------------------
+
+}
+
+
+
+
+
+
 
 /*
  GPS_PAUSED = 0,
