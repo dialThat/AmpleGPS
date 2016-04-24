@@ -11,6 +11,8 @@
 
 #endif /* AmpleGPS_h */
 
+// char *nmeaPrefix = "$GP";// keep in mind that 'GP" may be changed
+// The prefix will be removed asap in order to save some bytes
 
 #define GPRMC_NMEA "RMC"
 #define GPVTG_NMEA "VTG"
@@ -54,11 +56,9 @@ const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Eart
     public:
         uint16_t milliseconds;
         
-        char readBuffer[MAXLINELENGTH];//82+3(checksum, '*XX'+'$'+'/0'
-        uint8_t bufferIndex=0;//volatile
-//        const char *nmeaPrefix = "$GP";// keep in mind that 'GP" may be changed
+        char readBuffer[MAXLINELENGTH];
+        uint8_t bufferIndex=0;
         
-//        char nmeaSentence[MAXLINELENGTH + 1];
         char nmeaSentence[81];//82 -'GP' +'/0';
         char *checksumString;
         uint16_t nmeaCheckSum;
@@ -74,7 +74,6 @@ const uint16_t doubleEarth PROGMEM = 12742;//  = 2 * 6371// diameter of the Eart
         boolean fix;
         uint8_t fixquality, satellitesCount;
         
-        //        gsv_satellite satellites[MAXSATELLITES];//inserted for GPGSV @dial
         GSV_Satellite satellitesBuffer[MAXSATELLITES];
         boolean gsv_isDirty;
         
